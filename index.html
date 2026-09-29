@@ -1887,8 +1887,10 @@
   generateBtn.addEventListener('click', generateInsertSql);
 </script>
 
-<!-- 汉化包：渲染层翻译，词典与说明见 i18n/ 目录 -->
-<script src="./i18n/zh-data.js"></script>
-<script src="./i18n/zh-pack.js"></script>
+<!-- 汉化包：渲染层翻译，词典与说明见 i18n/ 目录。
+     更新 i18n/ 下任何文件后，务必把下面两处 ?v= 数字加一（如 v=3），
+     否则 Cloudflare 和浏览器会继续用旧缓存的 js（CF 默认按扩展名缓存 .js） -->
+<script src="./i18n/zh-data.js?v=2"></script>
+<script src="./i18n/zh-pack.js?v=2"></script>
 </body>
 </html>

@@ -29,6 +29,16 @@ server {
         gzip_comp_level 5;
         gzip_types application/json application/javascript text/css image/svg+xml;
         # 注：text/html 默认就在 gzip 范围内，不要写进 gzip_types（会产生 duplicate 警告）
+        # 页面更新必须立即生效：只允许协商缓存（内容没变时 304，变了才重下）
+        add_header Cache-Control "no-cache";
+    }
+
+    # 汉化包改了要立即生效：禁用强缓存（文件只有几十 KB，代价可忽略）。
+    # 必须：Cloudflare 默认按扩展名缓存 .js，源站不发 Cache-Control 时
+    # 旧的 zh-pack.js 会在边缘节点一直生效，表现为"更新了还是卡"
+    location /exercises/i18n/ {
+        alias /var/www/exercises-dataset/i18n/;   # ← 与上面目录保持一致
+        add_header Cache-Control "no-cache";
     }
 
     # 动图大（126MB），让浏览器长缓存
