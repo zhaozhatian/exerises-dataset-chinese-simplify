@@ -1,0 +1,42 @@
+# 独立域名/子域名部署用的 Nginx 配置模板（备用方案）
+# 当前实际方案是"现有域名 + /exercises/ 子路径"，见 nginx-server-merge.example
+
+server {
+    listen 80;
+    server_name your-domain.com;          # 改成你的域名或服务器 IP
+
+    root /var/www/exercises-dataset;       # 改成项目上传路径
+    index index.html;
+
+    # 首页内嵌了全部动作数据（约 16MB），必须开压缩
+    # 注：text/html 默认就在 gzip 范围内，不要写进 gzip_types（会产生 duplicate 警告）
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types application/json text/css application/javascript image/svg+xml;
+    gzip_vary on;
+
+    # 动图大（126MB），让浏览器长缓存
+    location /videos/ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+    location /images/ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # 数据文件偶尔更新，短缓存
+    location /data/ {
+        expires 1h;
+    }
+
+    # 单页入口
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# HTTPS（推荐，安装 certbot 后运行：
+#   certbot --nginx -d your-domain.com
+# 会自动改写本配置并续期）

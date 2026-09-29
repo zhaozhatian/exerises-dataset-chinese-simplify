@@ -1,0 +1,64 @@
+# 在现有 xxx.net 443 server 块中合并下面的新增段落（当前采用的方案）。
+# 原理：nginx 前缀匹配取最长，/exercises/* 命中新 location，
+#       其余所有路径照旧走 location / 的反代，现有服务不受影响。
+#
+# 注意：域名套了 Cloudflare CDN，SSH 无法通过该域名连接属正常现象；
+#       网页流量走 CDN 不受影响，且 CF 会按扩展名自动缓存 .gif/.jpg。
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name xxx.net;
+
+    ssl_certificate     /etc/nginx/ssl/xui.pem;
+    ssl_certificate_key /etc/nginx/ssl/xui.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # ================= 新增：动作库（exercises-dataset）开始 =================
+
+    # 不带斜杠时重定向（页面内相对路径资源依赖带斜杠的目录 URL）
+    location = /exercises { return 301 /exercises/; }
+
+    # 页面本体（含内嵌动作数据，约 16MB，务必压缩）
+    location /exercises/ {
+        alias /var/www/exercises-dataset/;   # ← 改成你实际上传的目录
+        index index.html;
+        gzip on;
+        gzip_comp_level 5;
+        gzip_types application/json application/javascript text/css image/svg+xml;
+        # 注：text/html 默认就在 gzip 范围内，不要写进 gzip_types（会产生 duplicate 警告）
+    }
+
+    # 动图大（126MB），让浏览器长缓存
+    location /exercises/videos/ {
+        alias /var/www/exercises-dataset/videos/;   # ← 与上面目录保持一致
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # 缩略图长缓存
+    location /exercises/images/ {
+        alias /var/www/exercises-dataset/images/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # ================= 新增结束 =================
+
+    location / {
+        proxy_pass http://127.0.0.1:6339;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+# 80 端口这个块不用改：301 会原样保留 /exercises/ 路径跳到 https
+server {
+    listen 80;
+    server_name xxx.net;
+    return 301 https://$host$request_uri;
+}
