@@ -1465,12 +1465,47 @@
   }
 
   // ── Modal ──────────────────────────────────────────
+  // ── MP4 优先播放：优先加载同名 .mp4（体积约为 GIF 的 1/8，播放更流畅省电），
+  //    mp4 不存在（404）时回退为原 GIF，动画行为与原来完全一致 ──
+  function mountVideoOverImg(img, mp4Url, gifUrl) {
+    const video = document.createElement('video');
+    video.className = img.className;   // 复用原图的定位/淡入淡出样式
+    video.loop = true;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.setAttribute('muted', '');        // iOS Safari 自动播放要求
+    video.setAttribute('playsinline', '');
+    video.preload = 'auto';
+    video.addEventListener('error', () => {
+      // mp4 缺失：恢复原 img 并走原来的 GIF 加载路径
+      if (video.dataset.fellBack) return;
+      video.dataset.fellBack = '1';
+      video.remove();
+      img.style.display = '';
+      if (gifUrl && !img.getAttribute('src')) img.src = gifUrl;
+    });
+    video.addEventListener('loadeddata', () => { img.style.display = 'none'; });
+    video.src = mp4Url;
+    img.after(video);
+    const p = video.play();
+    if (p && p.catch) p.catch(() => {});   // 自动播放被拦时静默（显示首帧）
+    return video;
+  }
+
+  function unmountVideoRestoreImg(img) {
+    const v = img.parentElement && img.parentElement.querySelector('video');
+    if (v) { v.pause(); v.removeAttribute('src'); v.load(); v.remove(); }
+    img.style.display = '';
+  }
+
   function openModal(id) {
     const ex = state.exercises.find(e => e.id === id);
     if (!ex) return;
 
     modalTitle.textContent = ex.name;
-    modalGif.src = ex.gif_url;
+    unmountVideoRestoreImg(modalGif);
+    mountVideoOverImg(modalGif, ex.gif_url.replace(/\.gif$/, '.mp4'), ex.gif_url);
     modalGif.alt = ex.name;
 
     // Meta chips
@@ -1583,7 +1618,7 @@
   function closeModal() {
     modalOverlay.classList.remove('open');
     document.body.style.overflow = '';
-    modalGif.src = '';
+    unmountVideoRestoreImg(modalGif);
   }
 
   // ── Events ─────────────────────────────────────────
@@ -1624,13 +1659,14 @@
       applyFilters();
     });
 
-    // Card hover → load GIF
+    // Card hover → load MP4 (fallback GIF)
     gridEl.addEventListener('mouseover', e => {
       const card = e.target.closest('.exercise-card');
       if (!card) return;
       const gif = card.querySelector('.card-gif');
-      if (gif && gif.dataset.src && !gif.src) {
-        gif.src = gif.dataset.src;
+      if (gif && gif.dataset.src && !gif.dataset.swapDone) {
+        gif.dataset.swapDone = '1';
+        mountVideoOverImg(gif, gif.dataset.src.replace(/\.gif$/, '.mp4'), gif.dataset.src);
       }
     });
 
