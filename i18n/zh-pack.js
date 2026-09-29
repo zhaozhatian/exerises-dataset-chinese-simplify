@@ -100,9 +100,19 @@
     const tabs = root.querySelectorAll ? root.querySelectorAll('.lang-tab') : [];
     for (const btn of tabs) {
       if (btn.textContent === '简体中文') {
-        btn.click();
-        // 把激活的中文页签滚动到可视区（页签条可横向滚动）
-        if (btn.scrollIntoView) btn.scrollIntoView({ block: 'nearest', inline: 'center' });
+        // 已激活就不再点击：click 会触发 renderSteps 重渲染，
+        // 重渲染又会被下方 MutationObserver 捕获再次点击，形成死循环卡死页面
+        if (!btn.classList.contains('active')) {
+          btn.click();
+          // 只横向滚动页签条本身把中文页签居中；绝不能用 scrollIntoView——
+          // 它会连弹窗面板一起滚，把顶部的动作 GIF 顶出视野
+          const bar = btn.closest('.lang-tabs');
+          if (bar) {
+            const delta = btn.getBoundingClientRect().left - bar.getBoundingClientRect().left;
+            const target = bar.scrollLeft + delta - (bar.clientWidth - btn.offsetWidth) / 2;
+            bar.scrollLeft = Math.max(0, target);
+          }
+        }
         break;
       }
     }
