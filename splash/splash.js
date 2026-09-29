@@ -1,9 +1,9 @@
 /*
- * 毒舌教练开屏（每天一次）
+ * 毒舌教练开屏（每天一次）——炸裂版
  * 用法：在 index.html 的 </body> 前引入：
- *   <script src="./splash/splash.js?v=1"></script>
+ *   <script src="./splash/splash.js?v=3"></script>
  * 逻辑：localStorage 记录最近展示日期，每天首次访问弹出；
- *       同时统计到访天数，部分文案会带上"第 N 天"。
+ *       石头人砸入落地 → 白闪 + 冲击波 + 集中线 + 粒子爆发 + 屏幕震动。
  * 更新文案/样式后把 ?v= 数字加一。
  */
 (function () {
@@ -12,7 +12,8 @@
   var LAST_KEY = 'zhSplash.last';
   var DAYS_KEY = 'zhSplash.days';
 
-  // ── 每天只展示一次 ──
+  // ── 每天只展示一次（URL 带 ?splash=1 可强制弹出预览）──
+  var force = /[?&]splash=1/.test(location.search);
   var d = new Date();
   var today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   var last = null, days = 0;
@@ -20,7 +21,7 @@
     last = localStorage.getItem(LAST_KEY);
     days = parseInt(localStorage.getItem(DAYS_KEY), 10) || 0;
   } catch (e) { /* 隐私模式等不可用时：每次都展示 */ }
-  if (last === today) return;
+  if (last === today && !force) return;
   try {
     localStorage.setItem(LAST_KEY, today);
     localStorage.setItem(DAYS_KEY, String(last ? days + 1 : 1));
@@ -47,42 +48,60 @@
   var shownDays = (last ? days + 1 : 1);
   var fill = function (s) { return s.replace('{n}', shownDays); };
 
+  // 特效无条件全开：系统"减弱动态效果"不再降级（用户要求炸裂效果）
+
   // ── 样式 ──
   var CSS = ''
     + '.zh-splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;'
     + 'background:radial-gradient(120% 90% at 50% 10%,rgba(20,20,28,.94),rgba(8,8,12,.98));'
     + '-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:1;transition:opacity .3s;}'
     + '.zh-splash.closing{opacity:0;}'
-    + '.zh-splash-inner{display:flex;flex-direction:column;align-items:center;text-align:center;'
+    /* 漫画集中线：落地时点亮 */
+    + '.zh-splash-lines{position:absolute;inset:-20%;pointer-events:none;opacity:0;transition:opacity .12s;'
+    + 'background:repeating-conic-gradient(from 0deg at 50% 42%,rgba(255,255,255,.07) 0deg 2.5deg,transparent 2.5deg 8deg);}'
+    + '.zh-splash-lines.on{opacity:1;transition:opacity .06s;}'
+    + '.zh-splash-lines.dim{opacity:.45;transition:opacity .5s;}'
+    + '.zh-splash-inner{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;'
     + 'padding:28px 24px calc(28px + env(safe-area-inset-bottom));max-width:560px;width:100%;}'
+    + '.zh-splash.shaking .zh-splash-inner{animation:zhShake .42s linear;}'
+    /* 石头人：远处呼啸砸入，落地压扁回弹 */
     + '.zh-splash-img{width:min(64vw,340px);max-height:44vh;object-fit:contain;border-radius:18px;'
     + 'box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08);'
-    + 'animation:zhImgIn .55s cubic-bezier(.34,1.56,.64,1) both,zhRep 1.8s ease-in-out .6s infinite;}'
+    + 'animation:zhSlam .5s cubic-bezier(.3,.7,.4,1) both;}'
+    + '.zh-splash.img-in .zh-splash-img{animation:zhSlam .5s cubic-bezier(.3,.7,.4,1) both,zhRep 1.8s ease-in-out 1.3s infinite;}'
     + '.zh-splash-title{margin:26px 0 10px;color:#fff;font-size:clamp(24px,6.5vw,40px);'
     + 'font-weight:900;letter-spacing:.02em;line-height:1.25;'
-    + 'animation:zhPop .4s cubic-bezier(.34,1.56,.64,1) .3s both;}'
+    + 'animation:zhPunch .35s cubic-bezier(.2,1.6,.4,1) .55s both;}'
     + '.zh-splash-sub{margin:0 0 30px;color:rgba(255,255,255,.72);'
     + 'font-size:clamp(15px,4vw,19px);line-height:1.7;max-width:24em;'
-    + 'animation:zhPop .4s cubic-bezier(.34,1.56,.64,1) .45s both;}'
+    + 'animation:zhPunch .35s cubic-bezier(.2,1.6,.4,1) .68s both;}'
     + '.zh-splash-btn{appearance:none;border:none;cursor:pointer;color:#fff;'
     + 'background:#f97316;font-size:clamp(17px,4.5vw,20px);font-weight:800;'
     + 'padding:15px 44px;border-radius:999px;letter-spacing:.04em;'
     + 'box-shadow:0 10px 30px rgba(249,115,22,.4),inset 0 1px 0 rgba(255,255,255,.25);'
-    + 'animation:zhPop .4s cubic-bezier(.34,1.56,.64,1) .6s both,zhPulse 2s ease-in-out 1.2s infinite;}'
+    + 'animation:zhPunch .35s cubic-bezier(.2,1.6,.4,1) .8s both,zhPulse 2s ease-in-out 1.4s infinite;}'
     + '.zh-splash-btn:active{transform:scale(.95);}'
     + '.zh-splash-foot{margin-top:18px;color:rgba(255,255,255,.35);font-size:12px;'
-    + 'animation:zhPop .4s ease .75s both;}'
-    + '@keyframes zhImgIn{from{transform:scale(.5) rotate(-8deg);opacity:0;}'
-    + 'to{transform:scale(1) rotate(0);opacity:1;}}'
+    + 'animation:zhPunch .3s ease .9s both;}'
+    + '.zh-splash-flash{position:absolute;inset:0;background:#fff;pointer-events:none;opacity:0;}'
+    + '.zh-splash-ring{position:absolute;pointer-events:none;border-radius:50%;'
+    + 'border:4px solid rgba(249,115,22,.9);width:60px;height:60px;}'
+    + '.zh-splash-particle{position:absolute;pointer-events:none;font-weight:900;line-height:1;}'
+    + '@keyframes zhSlam{0%{transform:scale(2.8) rotate(-16deg);opacity:0;}'
+    + '55%{opacity:1;}70%{transform:scale(.94) rotate(2deg);}'
+    + '85%{transform:scale(1.06) rotate(-1deg);}100%{transform:scale(1) rotate(0);}}'
+    + '@keyframes zhShake{0%,100%{transform:translate(0,0);}10%{transform:translate(-9px,5px);}'
+    + '20%{transform:translate(8px,-6px);}30%{transform:translate(-7px,-4px);}'
+    + '40%{transform:translate(6px,5px);}50%{transform:translate(-5px,2px);}'
+    + '60%{transform:translate(4px,-3px);}70%{transform:translate(-3px,2px);}'
+    + '80%{transform:translate(2px,-2px);}90%{transform:translate(-1px,1px);}}'
     + '@keyframes zhRep{0%,100%{transform:scale(1,1) translateY(0);}'
     + '35%{transform:scale(.985,1.02) translateY(-7px);}'
     + '65%{transform:scale(1.015,.975) translateY(1px);}}'
-    + '@keyframes zhPop{from{transform:translateY(14px) scale(.94);opacity:0;}'
+    + '@keyframes zhPunch{from{transform:translateY(16px) scale(.7);opacity:0;}'
     + 'to{transform:translateY(0) scale(1);opacity:1;}}'
     + '@keyframes zhPulse{0%,100%{box-shadow:0 10px 30px rgba(249,115,22,.4),inset 0 1px 0 rgba(255,255,255,.25);}'
     + '50%{box-shadow:0 10px 38px rgba(249,115,22,.65),inset 0 1px 0 rgba(255,255,255,.25);}}'
-    + '@media (prefers-reduced-motion:reduce){.zh-splash-img,.zh-splash-title,.zh-splash-sub,'
-    + '.zh-splash-btn,.zh-splash-foot{animation:none;}}'
     + '@media (max-width:480px){.zh-splash-img{width:min(72vw,300px);}'
     + '.zh-splash-title{margin-top:22px;}}';
   var style = document.createElement('style');
@@ -96,6 +115,7 @@
   overlay.setAttribute('aria-modal', 'true');
   overlay.setAttribute('aria-label', '今日毒舌');
   overlay.innerHTML = ''
+    + '<div class="zh-splash-lines"></div>'
     + '<div class="zh-splash-inner">'
     + '  <img class="zh-splash-img" src="./splash/coach.jpg?v=2" alt="斜方肌天才教练" decoding="async">'
     + '  <h2 class="zh-splash-title"></h2>'
@@ -111,10 +131,84 @@
   var prevOverflow = document.body.style.overflow;
   document.body.style.overflow = 'hidden';
 
+  // ── 落地爆炸：白闪 + 冲击波环 + 粒子发散弹射 + 屏幕震动 + 集中线 ──
+  var IMPACT_AT = 340; // zhSlam 0.5s 里 70% 处落地
+  function impact() {
+    var img = overlay.querySelector('.zh-splash-img');
+    var r = img.getBoundingClientRect();
+    var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var dist = Math.min(vw, vh);
+
+    // 白闪
+    var flash = document.createElement('div');
+    flash.className = 'zh-splash-flash';
+    overlay.appendChild(flash);
+    var fa = flash.animate([{ opacity: .85 }, { opacity: 0 }], { duration: 220, easing: 'ease-out' });
+    if (fa && fa.onfinish !== undefined) fa.onfinish = function () { flash.remove(); };
+    else setTimeout(function () { flash.remove(); }, 240);
+
+    // 冲击波环 ×2（橙 + 白，错开）
+    [0, 90].forEach(function (delay, i) {
+      setTimeout(function () {
+        var ring = document.createElement('div');
+        ring.className = 'zh-splash-ring';
+        if (i === 1) ring.style.borderColor = 'rgba(255,255,255,.8)';
+        ring.style.left = cx + 'px'; ring.style.top = cy + 'px';
+        overlay.appendChild(ring);
+        var ra = ring.animate(
+          [{ transform: 'translate(-50%,-50%) scale(.2)', opacity: 1 },
+           { transform: 'translate(-50%,-50%) scale(' + (dist / 26) + ')', opacity: 0 }],
+          { duration: 620, easing: 'cubic-bezier(.1,.6,.3,1)' });
+        if (ra && ra.onfinish !== undefined) ra.onfinish = function () { ring.remove(); };
+        else setTimeout(function () { ring.remove(); }, 660);
+      }, delay);
+    });
+
+    // 粒子发散弹射：emoji + 色点，从图片中心向四周炸开
+    var EMOJI = ['💪', '🔥', '⚡', '💥', '🏋️', '😤', '✨'];
+    var COLORS = ['#f97316', '#ffffff', '#ec4899', '#facc15'];
+    var count = vw < 480 ? 22 : 30;
+    for (var i = 0; i < count; i++) {
+      var p = document.createElement('span');
+      p.className = 'zh-splash-particle';
+      var isEmoji = i % 3 !== 2;
+      if (isEmoji) { p.textContent = pick(EMOJI); p.style.fontSize = (14 + Math.random() * 18) + 'px'; }
+      else {
+        p.textContent = '●';
+        p.style.color = pick(COLORS);
+        p.style.fontSize = (8 + Math.random() * 10) + 'px';
+      }
+      p.style.left = cx + 'px'; p.style.top = cy + 'px';
+      overlay.appendChild(p);
+      var ang = Math.random() * Math.PI * 2;
+      var radius = dist * (0.28 + Math.random() * 0.45);
+      var dx = Math.cos(ang) * radius, dy = Math.sin(ang) * radius - dist * 0.06;
+      var rot = (Math.random() * 520 - 260);
+      var pa = p.animate(
+        [{ transform: 'translate(-50%,-50%) scale(.4)', opacity: 1 },
+         { transform: 'translate(-50%,-50%) translate(' + dx + 'px,' + dy + 'px) rotate(' + rot + 'deg) scale(' + (0.8 + Math.random()) + ')', opacity: 0 }],
+        { duration: 750 + Math.random() * 650, easing: 'cubic-bezier(.1,.65,.3,1)', delay: Math.random() * 90 });
+      if (pa && pa.onfinish !== undefined) (function (node, anim) { anim.onfinish = function () { node.remove(); }; })(p, pa);
+      else (function (node) { setTimeout(function () { node.remove(); }, 1500); })(p);
+    }
+
+    // 屏幕震动
+    overlay.classList.add('shaking');
+    setTimeout(function () { overlay.classList.remove('shaking'); }, 450);
+
+    // 集中线：点亮后收暗
+    var lines = overlay.querySelector('.zh-splash-lines');
+    lines.classList.add('on');
+    setTimeout(function () { lines.classList.remove('on'); lines.classList.add('dim'); }, 480);
+  }
+  if (document.readyState === 'complete') setTimeout(impact, IMPACT_AT);
+  else setTimeout(impact, IMPACT_AT + 250); // 图片还在解码时稍微延后，保证砸在已显示的图上
+
+  // ── 关闭 ──
   function close() {
     overlay.classList.add('closing');
     document.body.style.overflow = prevOverflow;
-    // 过渡结束立即移除；定时器只作兜底（后台标签页会节流定时器）
     overlay.addEventListener('transitionend', function () { overlay.remove(); }, { once: true });
     setTimeout(function () { overlay.remove(); }, 320);
     document.removeEventListener('keydown', onKey);
@@ -126,5 +220,5 @@
   });
   document.addEventListener('keydown', onKey);
   var btn = overlay.querySelector('.zh-splash-btn');
-  if (btn && btn.focus) setTimeout(function () { btn.focus({ preventScroll: true }); }, 400);
+  if (btn && btn.focus) setTimeout(function () { btn.focus({ preventScroll: true }); }, 900);
 })();
