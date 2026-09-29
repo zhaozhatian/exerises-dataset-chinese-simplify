@@ -97,7 +97,7 @@
   overlay.setAttribute('aria-label', '今日毒舌');
   overlay.innerHTML = ''
     + '<div class="zh-splash-inner">'
-    + '  <img class="zh-splash-img" src="./splash/coach.jpg" alt="斜方肌天才教练" decoding="async">'
+    + '  <img class="zh-splash-img" src="./splash/coach.jpg?v=2" alt="斜方肌天才教练" decoding="async">'
     + '  <h2 class="zh-splash-title"></h2>'
     + '  <p class="zh-splash-sub"></p>'
     + '  <button class="zh-splash-btn" type="button"></button>'
